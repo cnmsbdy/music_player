@@ -1,8 +1,10 @@
 import sys
 import os
 import time
+import shutil
+import glob
 import pygame
-from PyQt5.QtWidgets import QFileDialog,QListView,QListWidget,QGridLayout,QMainWindow,QApplication,QSplitter,QPushButton,QSlider, QDialog,QWidget,QLabel
+from PyQt5.QtWidgets import QFileDialog,QListWidget,QGridLayout,QMainWindow,QApplication,QPushButton,QSlider, QDialog,QWidget,QLabel, QAction,qApp
 from PyQt5.QtGui import QIcon,QBrush, QImage, QPainter, QPixmap, QWindow
 from PyQt5 import QtGui,QtCore
 from PyQt5.QtCore import Qt,QRect
@@ -24,7 +26,7 @@ class ChoiceFiles(QWidget):
     def initUI(self):
         self.setWindowTitle('Please select files')
         self.setGeometry(self.left, self.top, self.width, self.height)
-        self.openFileNameDialog()
+        # delete openFileNameDialog
         self.show()
 
     def openFileNameDialog(self):
@@ -34,7 +36,6 @@ class ChoiceFiles(QWidget):
         if fileName:
             full_path = fileName
             return full_path
-
     
 
 class Desktop(QWidget):
@@ -56,7 +57,7 @@ class Desktop(QWidget):
         self.now_play=None
         self.send = None
         self.initUI()
-        
+
     def initUI(self):
         self.list_widget()
         self.add_button()
@@ -97,15 +98,22 @@ class Desktop(QWidget):
         self.btn_stop.clicked.connect(self.play)
         self.next.clicked.connect(self.play)
         self.prev.clicked.connect(self.play)
-
+        
     @property
+    def add_file(self):
+        return self.file
+    
+    @add_file.setter
+    def add_file(self,file):
+        for file_wav in glob.glob(file):
+            shutil.copy2(file_wav, os.getcwd() + '/music/')
+        
     def next_music(self):
         self.current_i += 1
         if self.current_i >= self.count:
             self.current_i = 0
         return self.file[self.current_i]
 
-    @property
     def previosly_music(self):
         self.current_i -=1
         if self.current_i < 0:
@@ -126,11 +134,11 @@ class Desktop(QWidget):
             self.duration_song = self.music.get_sound().get_length()
             
         elif self.send==self.next:
-            self.music.play(pygame.mixer.Sound(self.path + self.next_music))
+            self.music.play(pygame.mixer.Sound(self.path + self.next_music()))
             self.duration_song = self.music.get_sound().get_length()
 
         elif self.send == self.prev:
-            self.music.play(pygame.mixer.Sound(self.path + self.previosly_music))
+            self.music.play(pygame.mixer.Sound(self.path + self.previosly_music()))
             self.duration_song = self.music.get_sound().get_length()
            
         elif self.send == self.btn_stop:
@@ -149,15 +157,8 @@ class Desktop(QWidget):
                     self.volume.setIcon(QtGui.QIcon(os.getcwd() + '/icons/two.png'))
                     self.mute_state = False
             except: 
-                self.music.play(pygame.mixer.Sound( ChoiceFiles().openFileNameDialog()))
-        self.play_check(self.current_i)
-
-    def play_check(self,current):
-        for num, song in enumerate(self.file):
-            if num == current:
-                continue # already playing
-            next_turn = pygame.mixer.Sound(self.path + '/' + song)
-            self.music.queue(next_turn)
+                print ('Select music')
+       
 
     def widget_volume(self):
         sld = QSlider(Qt.Horizontal, self)
@@ -208,7 +209,8 @@ class Desktop(QWidget):
     
     
 if __name__ == '__main__':
-    
     app = QApplication(sys.argv)
+    if Desktop().file == []:
+        Desktop().add_file = ChoiceFiles().openFileNameDialog()
     desktop=Desktop()
     sys.exit(app.exec_())
